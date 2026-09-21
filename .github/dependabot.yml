@@ -1,0 +1,111 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /cli/node
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /examples/mem0-demo
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /examples/multimodal-demo
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /examples/openai-inbuilt-tools
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /examples/vercel-ai-sdk-chat-app
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /examples/yt-assistant-chrome
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /integrations/agent-plugin-core/typescript
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /integrations/deepseek-plugin
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /integrations/n8n-nodes-mem0
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /integrations/openclaw
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /integrations/opencode-plugin
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /integrations/pi-agent-plugin
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /integrations/vercel-ai-sdk
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /integrations/zapier-mem0
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /mem0-ts
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /mem0-ts/src/community
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /mem0-ts/src/oss
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /server
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: /server/dashboard
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /server/dashboard
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pip
+    directory: /server
+    schedule:
+      interval: weekly
