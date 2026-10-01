@@ -1,0 +1,109 @@
+---
+title: "Aerospike"
+description: "Use Aerospike Community Edition as a vector database in Mem0, via native Vector bins and server-side Top-K similarity."
+---
+
+[Aerospike](https://aerospike.com/) is a distributed database that supports native `Vector` bins and server-side Top-K
+similarity ranking. This provider is built against the **preview** `aerospike-sdk` (PSDK) alpha client and works entirely
+on **Aerospike Community Edition** — no Enterprise-only features are required.
+
+<Note>
+  This provider is **experimental**: it depends on a preview/alpha SDK (`aerospike-sdk`) and requires **Python
+  3.10+** and **Aerospike Server 8.1.3+** (8.2.0+ recommended). Both requirements are narrower than mem0 core's own
+  floor (Python 3.9+), so this provider is only usable on newer runtimes and clusters.
+</Note>
+
+### Installation
+
+```bash
+pip install "mem0ai[vector-stores]"
+```
+
+Run a local Aerospike Server for development (8.1.3+ required):
+
+```bash
+docker run -d --name aerospike -p 3000-3002:3000-3002 aerospike/aerospike-server:latest
+```
+
+### Usage
+
+```python Python
+import os
+from mem0 import Memory
+
+os.environ["OPENAI_API_KEY"] = "sk-xx"
+
+config = {
+    "vector_store": {
+        "provider": "aerospike",
+        "config": {
+            "namespace": "test",
+            "collection_name": "mem0",
+            "embedding_model_dims": 1536,
+            "host": "localhost",
+            "port": 3000,
+        },
+    },
+    "version": "v1.1",
+}
+
+m = Memory.from_config(config)
+messages = [
+    {"role": "user", "content": "I'm planning to watch a movie tonight. Any recommendations?"},
+    {"role": "assistant", "content": "How about thriller movies? They can be quite engaging."},
+]
+m.add(messages, user_id="alice", metadata={"category": "movies"})
+```
+
+### Config
+
+Available parameters for the `aerospike` config:
+
+| Parameter | Description | Default Value |
+| --- | --- | --- |
+| `namespace` | The Aerospike namespace backing the collection | `test` |
+| `collection_name` | The Aerospike set name (mem0's "collection") | `mem0` |
+| `embedding_model_dims` | Dimensions of the embedding model | `1536` |
+| `host` | Aerospike seed host | `localhost` |
+| `port` | Aerospike seed port | `3000` |
+| `allow_scans_with_where` | Allow `search()`/`list()` filters that don't include `user_id`, `agent_id`, or `run_id` to fall back to a full scan, instead of raising | `False` |
+| `max_record_bytes` | Client-side record-size guardrail; `insert()`/`update()` raise before writing a record larger than this | `943718` (~0.9 MiB) |
+
+### How search works: exact Top-K, not ANN
+
+`search()` ranks candidates by cosine similarity using Aerospike's native `Vector` bin and Top-K query mechanism
+(`Exp.cosine_similarity` + `ORDER BY ... LIMIT`). This is an **exact, brute-force-over-candidates** ranking — there
+is no HNSW-equivalent (ANN) index in Aerospike core today, similar in shape to Redis's `FLAT` algorithm. Aerospike's
+own guidance treats brute-force ranking as fine for candidate sets in the **hundreds-to-thousands** range per query,
+which is the typical size of a single `user_id`/`agent_id`/`run_id` scope's memories — not the collection as a whole.
+This is a real scaling ceiling worth planning around, not a hidden one.
+
+### Filtering and scoping
+
+`search()` and `list()` always require at least one of `user_id`, `agent_id`, or `run_id` in `filters` (mem0 core's
+own contract already requires this on `add`/`search`/`get_all`). `create_col()` creates a secondary index on each of
+the three fields, since Aerospike's query planner selects at most one secondary index per query — each field is
+independently sufficient as the sole scoping predicate, so each needs its own index. A filter that contains none of
+the three raises a clear error unless `allow_scans_with_where=True` is set, in which case the query falls back to a
+full scan. Metadata operators (`eq`/`ne`/`gt`/`gte`/`lt`/`lte`/`in`/`nin`/`contains`/`icontains`, plus `$or`/`$not`)
+compose with the required scoping field and are always compiled into `Exp` expression trees — never into an
+interpolated query string — so untrusted filter values can't affect query structure.
+
+### Secondary-index memory cost
+
+On Community Edition, secondary indexes are unconditionally RAM-resident (no `flash`/`pmem` sindex storage — that's
+Enterprise-only). Size cluster memory against the **distinct-value cardinality** of `user_id`/`agent_id`/`run_id`,
+not against total record count.
+
+### Record size
+
+Caller metadata is contractually unbounded (as in the Redis and MongoDB providers). This provider checks the
+serialized record size on `insert()`/`update()` and rejects with a clear client-side error when it would exceed
+`max_record_bytes`, rather than letting the write fail server-side against `max-record-size` (1 MiB default,
+tunable up to 8 MiB per namespace).
+
+### Not supported
+
+- `keyword_search()` returns `None` — Aerospike has no built-in BM25/full-text engine equivalent to RediSearch or
+  Atlas Search.
+- Approximate nearest-neighbor (ANN) search — not available in Aerospike core today.
