@@ -1,0 +1,36 @@
+services:
+  redis:
+    image: redis/redis-stack-server:7.4.0-v3
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  aerospike:
+    image: aerospike/aerospike-server:latest
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "3002:3002"
+    healthcheck:
+      test: ["CMD", "asinfo", "-p", "3000", "-v", "status"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
